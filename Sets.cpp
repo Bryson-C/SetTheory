@@ -25,7 +25,12 @@
 template<size_t N = 3>
 class BitString {
 	private:
-		// The Actual Representation Of The BitString: An Array Of Chars
+		/**
+		 * The Actual Representation Of The BitString: An Array Of Chars
+		 * 
+		 * In Theory This Could Be An Integer And Be Printed In Binary Representation,
+		 * But I Wanted The "String" Part Of Bit String, Plus Its Fun This Way
+		*/
 		char str[N];
 	public:
 		/**
@@ -35,6 +40,16 @@ class BitString {
 			for (int i = 0; i < N; i++)
 				str[i] = bits[i];
 		}
+
+		/**
+		 * This Takes A String And Sets The BitSet To The First N Bytes, All Bytes After N Are Ignored
+		 * The String Must Be At Least N Bits
+		 */
+		BitString(const std::string& bits) {
+			for (int i = 0; i < N; i++)
+				str[i] = bits[i];
+		}
+
 		/**
 		 * An Initialization With 0 Element Should Be Treated As A {0,0,...,0} Bits String With N Elements
 		 */
@@ -261,7 +276,6 @@ class Set {
 			// If Elements Share A Key, The Old Key Will Be Overwritten,
 			// Thereby Avoiding Duplicates
 			for (int i = 0; i < setB.size; i++)
-				// De-Cast Set<N_Bits> To Remove "const" To Allow Indexing
 				map[(std::string)(setB.elements[i])] = setB.elements[i];
 
 			// Create A New Set With All The Elements From The Hashmap, Which
@@ -269,19 +283,67 @@ class Set {
 			// Equal The Size Of The Hashmap
 			Set<N_Bits> newSet(map.size());
 
+			// Copy From Map To New Set
 			int iter = 0;
-			for (auto& elm : map) {
+			for (const auto& elm : map) {
 				newSet[iter++] = elm.second;
 		 	}
 
 			return newSet;
 		}
+
 		/**
 		 *  A ∩ B == Intersection
 		 * 
 		 * The Intersection Operation Gives A Set Of Elements That Are In Both Set A And Set B
+		 * 
+		 * Will Not Modify The Original Set, Will Return New Set
 		*/
-		Set<N_Bits> intersection() {}
+		Set<N_Bits> intersection(const Set<N_Bits>& setB) const {
+			// Use Another Hashmap With The BitString As The Key, And Number Of Occurances As The Value:
+			// map[bitstring] Will Return: (int) occurances
+			// If Occurances > 1 -- Meaning In Both Sets, Add It To The New Set
+
+			std::unordered_map<std::string, int> map;
+
+			// Set All Elements To 1, All Elements Of Set A Should Exist
+			for (int i = 0; i < this->size; i++) {
+				auto key = (std::string)elements[i];
+				map[key] = 1;
+			}
+				
+			// If The BitString (Key) Exists (Which Should Equal 1) And 
+			// Set B Contains The Element, Add 1
+			// This Should Not Add Any New Elements To The Map,
+			// Which Means Set C (The Set Being Returned) Will Have A Max
+			// Size Of "map.size()"
+			for (int i = 0; i < setB.size; i++) {
+				auto key = (std::string)(setB.elements[i]);
+				if (map.contains(key)) map[key]++;
+			}
+
+			// If Any map[bitstring] > 1 Then It Exists In Both,
+			// So We May Copy It Over To A New Dynamic Array (Vector),
+			// We Cant Copy It Directly Over Because Any Element In
+			// The Array May Be Equal To 1, Meaning It Will Not Be
+			// Part Of The Final Result, So "map.size()" Wont Equal
+			// Set C ("newSet") Size
+
+			std::vector<BitString<N_Bits>> intersections{};
+			for (const auto& elm : map) {
+				// check map[bitstring].occurances > 1
+				if (elm.second > 1)
+					intersections.push_back(BitString<N_Bits>(elm.first));
+			}
+
+			// Set C/"newSet" Size Will Equal "intersections.size()"
+			Set<N_Bits> newSet(intersections.size());
+			for (int i = 0; i < intersections.size(); i++)
+				newSet[i] = intersections[i];
+
+			return newSet;
+		}
+
 		/**
 		 * A - B == Difference
 		 * 
@@ -359,7 +421,21 @@ auto main() -> int {
 		C.print();
 	});
 
+	RunTest("Test Set Intersection", []() {
+		printf("Sets:\n");
 
+		Set<3> A {"000","010","100"};
+		printf("A:            ");
+		A.print();
+		
+		Set<3> B {"000","010","001"};
+		printf("B:            ");
+		B.print();
+		
+		Set<3> C = A.intersection(B);
+		printf("Intersection: ");
+		C.print();
+	});
 
 	return 0;
 }
